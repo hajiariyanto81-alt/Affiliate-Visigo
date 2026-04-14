@@ -19,7 +19,10 @@ import {
   GraduationCap,
   ChevronDown,
   X,
-  Send
+  Send,
+  Upload,
+  Image as ImageIcon,
+  Loader2
 } from 'lucide-react';
 
 // --- Types ---
@@ -33,6 +36,8 @@ interface FormData {
   alasan: string;
   siapShare: string;
   komunitas: string;
+  foto?: string; // Base64 string
+  fotoName?: string;
 }
 
 // --- Components ---
@@ -418,7 +423,7 @@ const Qualifications = () => (
   </section>
 );
 
-const AffiliateForm = ({ onSubmitSuccess }: { onSubmitSuccess: () => void }) => {
+const AffiliateForm = ({ onSubmitSuccess }: { onSubmitSuccess: (data: FormData) => void }) => {
   const [formData, setFormData] = useState<FormData>({
     nama: '',
     whatsapp: '',
@@ -428,26 +433,130 @@ const AffiliateForm = ({ onSubmitSuccess }: { onSubmitSuccess: () => void }) => 
     username: '',
     alasan: '',
     siapShare: '',
-    komunitas: ''
+    komunitas: '',
+    foto: '',
+    fotoName: ''
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const validateField = (name: string, value: any) => {
+    if (!value || (Array.isArray(value) && value.length === 0)) {
+      setFieldErrors(prev => ({ ...prev, [name]: 'Kolom ini wajib diisi' }));
+      return false;
+    }
+    setFieldErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[name];
+      return newErrors;
+    });
+    return true;
+  };
+
+  const compressImage = (base64Str: string): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.src = base64Str;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.7));
+      };
+    });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        setError("Ukuran foto terlalu besar (Maks 10MB)");
+        return;
+      }
+      
+      setUploading(true);
+      const reader = new FileReader();
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+        const compressed = await compressImage(base64);
+        setFormData(prev => ({
+          ...prev,
+          foto: compressed,
+          fotoName: file.name
+        }));
+        setFieldErrors(prev => {
+          const newErrors = { ...prev };
+          delete newErrors['foto'];
+          return newErrors;
+        });
+        setUploading(false);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const handleCheckbox = (value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      sosmed: prev.sosmed.includes(value) 
-        ? prev.sosmed.filter(s => s !== value)
-        : [...prev.sosmed, value]
-    }));
+    const newSosmed = formData.sosmed.includes(value) 
+      ? formData.sosmed.filter(s => s !== value)
+      : [...formData.sosmed, value];
+    
+    setFormData(prev => ({ ...prev, sosmed: newSosmed }));
+    validateField('sosmed', newSosmed);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+    
+    const errors: Record<string, string> = {};
+    const requiredFields = ['nama', 'whatsapp', 'domisili', 'umur', 'foto', 'username', 'alasan', 'siapShare', 'komunitas'];
+    
+    requiredFields.forEach(field => {
+      if (!formData[field as keyof FormData]) {
+        errors[field] = 'Kolom ini wajib diisi';
+      }
+    });
+
+    if (formData.sosmed.length === 0) {
+      errors['sosmed'] = 'Pilih minimal satu';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      setError("Mohon lengkapi semua data yang bertanda merah!");
+      // Scroll to first error
+      const firstErrorField = Object.keys(errors)[0];
+      document.getElementsByName(firstErrorField)[0]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
-      // Send data to our backend API which proxies to Google Sheets
+      console.log("Submitting form data...", { ...formData, foto: formData.foto ? "Base64 string present" : "Missing" });
+      
       const response = await fetch('/api/submit-affiliate', {
         method: 'POST',
         headers: {
@@ -456,22 +565,28 @@ const AffiliateForm = ({ onSubmitSuccess }: { onSubmitSuccess: () => void }) => 
         body: JSON.stringify(formData),
       });
 
-      const result = await response.json();
+      console.log("Response status:", response.status);
+
+      let result;
+      const responseText = await response.text();
+      
+      try {
+        result = JSON.parse(responseText);
+      } catch (e) {
+        console.error("Response is not JSON:", responseText);
+        throw new Error(`Server Error (${response.status}): Respon tidak valid. Pastikan Google Script sudah di-deploy sebagai 'Anyone'.`);
+      }
       
       if (result.success) {
-        onSubmitSuccess();
-        // Redirect to WhatsApp with formatted data
-        const message = `*PENDAFTARAN AFFILIATE VISIGO*\n\nHalo admin VisiGo, saya sudah mengisi form pendaftaran dan siap untuk mulai menghasilkan!\n\n*Data Pendaftar:*\n- Nama: ${formData.nama}\n- WhatsApp: ${formData.whatsapp}\n- Domisili: ${formData.domisili}\n- Umur: ${formData.umur || '-'}\n- Sosmed: ${formData.sosmed.join(', ')}\n\nMohon segera diproses ya admin, terima kasih!`;
-        window.open(`https://wa.me/6281296921892?text=${encodeURIComponent(message)}`, '_blank');
+        console.log("Submission successful!");
+        onSubmitSuccess(formData);
       } else {
-        alert("Gagal mengirim ke Google Sheets: " + result.message);
+        console.error("Submission failed:", result);
+        setError("Gagal mengirim data: " + (result.message || "Cek konfigurasi Google Script kamu."));
       }
     } catch (error) {
       console.error("Error submitting form:", error);
-      // Fallback: still success but notify about sheet error
-      onSubmitSuccess();
-      const message = `*PENDAFTARAN AFFILIATE VISIGO*\n\nHalo admin VisiGo, saya sudah mengisi form pendaftaran dan siap untuk mulai menghasilkan!\n\n*Data Pendaftar:*\n- Nama: ${formData.nama}\n- WhatsApp: ${formData.whatsapp}\n- Domisili: ${formData.domisili}\n\nMohon segera diproses ya admin, terima kasih!`;
-      window.open(`https://wa.me/6281296921892?text=${encodeURIComponent(message)}`, '_blank');
+      setError(error instanceof Error ? error.message : "Terjadi kesalahan saat mengirim data. Silakan coba lagi.");
     } finally {
       setIsSubmitting(false);
     }
@@ -488,6 +603,20 @@ const AffiliateForm = ({ onSubmitSuccess }: { onSubmitSuccess: () => void }) => 
           </div>
           
           <form onSubmit={handleSubmit} className="space-y-8">
+            <AnimatePresence>
+              {error && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-2xl text-sm font-medium flex items-center gap-3"
+                >
+                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse shrink-0" />
+                  {error}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <div className="space-y-6">
               <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <div className="w-1 h-6 bg-primary rounded-full" />
@@ -498,45 +627,124 @@ const AffiliateForm = ({ onSubmitSuccess }: { onSubmitSuccess: () => void }) => 
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-700">Nama Lengkap</label>
                   <input 
+                    name="nama"
                     required
                     type="text" 
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all ${
+                      fieldErrors.nama ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'
+                    }`}
                     placeholder="Contoh: Budi Santoso"
                     value={formData.nama}
-                    onChange={e => setFormData({...formData, nama: e.target.value})}
+                    onChange={e => {
+                      setFormData({...formData, nama: e.target.value});
+                      validateField('nama', e.target.value);
+                    }}
                   />
+                  {fieldErrors.nama && <p className="text-xs text-red-500 font-medium">{fieldErrors.nama}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-700">Nomor WhatsApp</label>
                   <input 
+                    name="whatsapp"
                     required
                     type="number" 
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all ${
+                      fieldErrors.whatsapp ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'
+                    }`}
                     placeholder="0812..."
                     value={formData.whatsapp}
-                    onChange={e => setFormData({...formData, whatsapp: e.target.value})}
+                    onChange={e => {
+                      setFormData({...formData, whatsapp: e.target.value});
+                      validateField('whatsapp', e.target.value);
+                    }}
                   />
+                  {fieldErrors.whatsapp && <p className="text-xs text-red-500 font-medium">{fieldErrors.whatsapp}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-slate-700">Domisili (Kota)</label>
                   <input 
+                    name="domisili"
                     required
                     type="text" 
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all ${
+                      fieldErrors.domisili ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'
+                    }`}
                     placeholder="Contoh: Jakarta"
                     value={formData.domisili}
-                    onChange={e => setFormData({...formData, domisili: e.target.value})}
+                    onChange={e => {
+                      setFormData({...formData, domisili: e.target.value});
+                      validateField('domisili', e.target.value);
+                    }}
                   />
+                  {fieldErrors.domisili && <p className="text-xs text-red-500 font-medium">{fieldErrors.domisili}</p>}
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">Umur (Opsional)</label>
+                  <label className="text-sm font-semibold text-slate-700">Umur</label>
                   <input 
+                    name="umur"
+                    required
                     type="number" 
-                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all ${
+                      fieldErrors.umur ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'
+                    }`}
                     placeholder="Contoh: 25"
                     value={formData.umur}
-                    onChange={e => setFormData({...formData, umur: e.target.value})}
+                    onChange={e => {
+                      setFormData({...formData, umur: e.target.value});
+                      validateField('umur', e.target.value);
+                    }}
                   />
+                  {fieldErrors.umur && <p className="text-xs text-red-500 font-medium">{fieldErrors.umur}</p>}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                  Upload Foto Diri (Untuk ID Digital)
+                  <span className="text-xs font-normal text-slate-400 italic">*Maks 5MB</span>
+                </label>
+                <div className="relative" name="foto">
+                  <input 
+                    type="file" 
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    id="foto-upload"
+                  />
+                  <label 
+                    htmlFor="foto-upload"
+                    className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-[2rem] cursor-pointer transition-all ${
+                      formData.foto 
+                        ? 'border-green-500 bg-green-50' 
+                        : fieldErrors.foto 
+                          ? 'border-red-500 bg-red-50'
+                          : 'border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-primary/30'
+                    }`}
+                  >
+                    {uploading ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                        <span className="text-sm font-medium text-slate-500">Memproses foto...</span>
+                      </div>
+                    ) : formData.foto ? (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-green-500">
+                          <img src={formData.foto} alt="Preview" className="w-full h-full object-cover" />
+                        </div>
+                        <span className="text-sm font-bold text-green-600">Foto Terpilih!</span>
+                        <span className="text-xs text-slate-400">{formData.fotoName}</span>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm">
+                          <Upload className="w-6 h-6 text-slate-400" />
+                        </div>
+                        <span className="text-sm font-medium text-slate-600">Klik untuk upload foto</span>
+                        <span className="text-xs text-slate-400">Pastikan wajah terlihat jelas</span>
+                      </div>
+                    )}
+                  </label>
+                  {fieldErrors.foto && <p className="text-xs text-red-500 font-medium mt-2">{fieldErrors.foto}</p>}
                 </div>
               </div>
             </div>
@@ -549,9 +757,11 @@ const AffiliateForm = ({ onSubmitSuccess }: { onSubmitSuccess: () => void }) => 
               
               <div className="space-y-4">
                 <label className="text-sm font-semibold text-slate-700">Akun yang aktif kamu gunakan:</label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4" name="sosmed">
                   {['WhatsApp', 'Instagram', 'TikTok', 'Facebook'].map(platform => (
-                    <label key={platform} className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                    <label key={platform} className={`flex items-center gap-2 p-3 bg-slate-50 rounded-xl border cursor-pointer hover:bg-slate-100 transition-colors ${
+                      fieldErrors.sosmed ? 'border-red-500 bg-red-50' : 'border-slate-200'
+                    }`}>
                       <input 
                         type="checkbox" 
                         className="w-4 h-4 rounded text-primary focus:ring-primary"
@@ -562,17 +772,26 @@ const AffiliateForm = ({ onSubmitSuccess }: { onSubmitSuccess: () => void }) => 
                     </label>
                   ))}
                 </div>
+                {fieldErrors.sosmed && <p className="text-xs text-red-500 font-medium">{fieldErrors.sosmed}</p>}
               </div>
               
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">Username / Link Akun (Opsional)</label>
+                <label className="text-sm font-semibold text-slate-700">Username / Link Akun</label>
                 <input 
+                  name="username"
+                  required
                   type="text" 
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                  className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all ${
+                    fieldErrors.username ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'
+                  }`}
                   placeholder="@username"
                   value={formData.username}
-                  onChange={e => setFormData({...formData, username: e.target.value})}
+                  onChange={e => {
+                    setFormData({...formData, username: e.target.value});
+                    validateField('username', e.target.value);
+                  }}
                 />
+                {fieldErrors.username && <p className="text-xs text-red-500 font-medium">{fieldErrors.username}</p>}
               </div>
             </div>
 
@@ -584,50 +803,77 @@ const AffiliateForm = ({ onSubmitSuccess }: { onSubmitSuccess: () => void }) => 
               
               <div className="space-y-4">
                 <label className="text-sm font-semibold text-slate-700">Kamu tertarik jadi affiliate karena apa?</label>
-                <div className="grid gap-3">
+                <div className="grid gap-3" name="alasan">
                   {['Tambahan penghasilan', 'Iseng coba', 'Mau serius bisnis', 'Lainnya'].map(opt => (
-                    <label key={opt} className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:border-primary/30 transition-all">
+                    <label key={opt} className={`flex items-center gap-3 p-4 bg-slate-50 rounded-xl border cursor-pointer hover:border-primary/30 transition-all ${
+                      fieldErrors.alasan ? 'border-red-500 bg-red-50' : 'border-slate-200'
+                    }`}>
                       <input 
                         type="radio" 
                         name="alasan"
                         className="w-4 h-4 text-primary focus:ring-primary"
-                        onChange={() => setFormData({...formData, alasan: opt})}
+                        checked={formData.alasan === opt}
+                        onChange={() => {
+                          setFormData({...formData, alasan: opt});
+                          validateField('alasan', opt);
+                        }}
                       />
                       <span className="text-sm font-medium text-slate-700">{opt}</span>
                     </label>
                   ))}
                 </div>
+                {fieldErrors.alasan && <p className="text-xs text-red-500 font-medium">{fieldErrors.alasan}</p>}
               </div>
 
               <div className="space-y-4">
                 <label className="text-sm font-semibold text-slate-700">Siap share minimal 1x per hari?</label>
-                <div className="flex gap-4">
+                <div className="flex gap-4" name="siapShare">
                   {['Ya', 'Tidak'].map(opt => (
-                    <label key={opt} className="flex-1 flex items-center justify-center gap-2 p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:border-primary/30 transition-all">
+                    <label key={opt} className={`flex-1 flex items-center justify-center gap-2 p-4 bg-slate-50 rounded-xl border cursor-pointer hover:border-primary/30 transition-all ${
+                      fieldErrors.siapShare ? 'border-red-500 bg-red-50' : 'border-slate-200'
+                    }`}>
                       <input 
                         type="radio" 
                         name="siapShare"
                         className="w-4 h-4 text-primary focus:ring-primary"
-                        onChange={() => setFormData({...formData, siapShare: opt})}
+                        checked={formData.siapShare === opt}
+                        onChange={() => {
+                          setFormData({...formData, siapShare: opt});
+                          validateField('siapShare', opt);
+                        }}
                       />
                       <span className="text-sm font-medium text-slate-700">{opt}</span>
                     </label>
                   ))}
                 </div>
+                {fieldErrors.siapShare && <p className="text-xs text-red-500 font-medium">{fieldErrors.siapShare}</p>}
               </div>
 
               <div className="space-y-4">
                 <label className="text-sm font-semibold text-slate-700">Punya komunitas / relasi?</label>
-                <select 
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none"
-                  onChange={e => setFormData({...formData, komunitas: e.target.value})}
-                >
-                  <option value="">Pilih opsi...</option>
-                  <option value="Tidak">Tidak</option>
-                  <option value="< 50 orang">&lt; 50 orang</option>
-                  <option value="50–100 orang">50–100 orang</option>
-                  <option value="> 100 orang">&gt; 100 orang</option>
-                </select>
+                <div className="relative">
+                  <select 
+                    name="komunitas"
+                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none ${
+                      fieldErrors.komunitas ? 'border-red-500 ring-1 ring-red-500' : 'border-slate-200'
+                    }`}
+                    value={formData.komunitas}
+                    onChange={e => {
+                      setFormData({...formData, komunitas: e.target.value});
+                      validateField('komunitas', e.target.value);
+                    }}
+                  >
+                    <option value="">Pilih opsi...</option>
+                    <option value="Tidak">Tidak</option>
+                    <option value="< 50 orang">&lt; 50 orang</option>
+                    <option value="50–100 orang">50–100 orang</option>
+                    <option value="> 100 orang">&gt; 100 orang</option>
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                    <ChevronDown className="w-5 h-5" />
+                  </div>
+                </div>
+                {fieldErrors.komunitas && <p className="text-xs text-red-500 font-medium">{fieldErrors.komunitas}</p>}
               </div>
             </div>
 
@@ -671,43 +917,68 @@ const Footer = () => (
   </footer>
 );
 
-const SuccessMessage = ({ onClose }: { onClose: () => void }) => (
-  <motion.div 
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
-  >
+const SuccessMessage = ({ onClose, formData }: { onClose: () => void, formData: FormData }) => {
+  const handleWhatsApp = () => {
+    const message = `*PENDAFTARAN AFFILIATE VISIGO*\n\nHalo admin VisiGo, saya sudah mengisi form pendaftaran dan siap untuk mulai menghasilkan!\n\n*Data Pendaftar:*\n- Nama: ${formData.nama}\n- WhatsApp: ${formData.whatsapp}\n- Domisili: ${formData.domisili}\n- Umur: ${formData.umur || '-'}\n- Sosmed: ${formData.sosmed.join(', ')}\n\nMohon segera diproses ya admin, terima kasih!`;
+    window.open(`https://wa.me/6281296921892?text=${encodeURIComponent(message)}`, '_blank');
+  };
+
+  return (
     <motion.div 
-      initial={{ scale: 0.9, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      className="bg-white rounded-[2.5rem] p-8 md:p-12 max-w-lg w-full text-center relative"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
     >
-      <button onClick={onClose} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 transition-colors">
-        <X className="w-6 h-6" />
-      </button>
-      <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-8">
-        <CheckCircle2 className="w-10 h-10 text-green-600" />
-      </div>
-      <h2 className="text-3xl font-bold text-slate-900 mb-4">Pendaftaran Berhasil!</h2>
-      <p className="text-slate-600 mb-8 leading-relaxed">
-        Terima kasih sudah mendaftar. Tim kami akan segera menghubungi kamu melalui WhatsApp untuk langkah selanjutnya.
-      </p>
-      <button 
-        onClick={onClose}
-        className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold hover:bg-slate-800 transition-all"
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-white rounded-[2.5rem] p-8 md:p-12 max-w-lg w-full text-center relative"
       >
-        Tutup
-      </button>
+        <button onClick={onClose} className="absolute top-6 right-6 p-2 text-slate-400 hover:text-slate-600 transition-colors">
+          <X className="w-6 h-6" />
+        </button>
+        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-8">
+          <CheckCircle2 className="w-10 h-10 text-green-600" />
+        </div>
+        <h2 className="text-3xl font-bold text-slate-900 mb-4">Pendaftaran Berhasil!</h2>
+        <p className="text-slate-600 mb-8 leading-relaxed">
+          Terima kasih sudah mendaftar. Data kamu sudah kami terima di sistem. Silakan klik tombol di bawah untuk konfirmasi ke Admin via WhatsApp.
+        </p>
+        
+        <div className="space-y-3">
+          <a 
+            href={`https://wa.me/6281296921892?text=${encodeURIComponent(`*PENDAFTARAN AFFILIATE VISIGO*\n\nHalo admin VisiGo, saya sudah mengisi form pendaftaran dan siap untuk mulai menghasilkan!\n\n*Data Pendaftar:*\n- Nama: ${formData.nama}\n- WhatsApp: ${formData.whatsapp}\n- Domisili: ${formData.domisili}\n- Umur: ${formData.umur || '-'}\n- Sosmed: ${formData.sosmed.join(', ')}\n\nMohon segera diproses ya admin, terima kasih!`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full py-5 bg-green-500 text-white rounded-2xl font-bold text-lg hover:bg-green-600 transition-all shadow-xl shadow-green-200 flex items-center justify-center gap-3 no-underline"
+          >
+            <MessageCircle className="w-6 h-6" />
+            Konfirmasi via WhatsApp
+          </a>
+          <button 
+            onClick={onClose}
+            className="w-full py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all"
+          >
+            Tutup
+          </button>
+        </div>
+      </motion.div>
     </motion.div>
-  </motion.div>
-);
+  );
+};
 
 export default function App() {
   const [showSuccess, setShowSuccess] = useState(false);
+  const [submittedData, setSubmittedData] = useState<FormData | null>(null);
   const formRef = useRef<HTMLDivElement>(null);
 
   const scrollToForm = () => {
     document.getElementById('daftar')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleSuccess = (data: FormData) => {
+    setSubmittedData(data);
+    setShowSuccess(true);
   };
 
   return (
@@ -725,7 +996,7 @@ export default function App() {
       <section className="py-20 bg-secondary/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl md:text-5xl font-bold text-slate-900 mb-8">Jangan cuma jadi penonton.</h2>
-          <p className="text-xl text-slate-600 mb-12 max-w-2xl mx-auto">
+          <p className="text-xl text-xl text-slate-600 mb-12 max-w-2xl mx-auto">
             Mulai hasilkan dari peluang yang ada di depan mata kamu sekarang.
           </p>
           <div className="flex justify-center">
@@ -743,12 +1014,17 @@ export default function App() {
         </div>
       </section>
 
-      <AffiliateForm onSubmitSuccess={() => setShowSuccess(true)} />
+      <AffiliateForm onSubmitSuccess={handleSuccess} />
       
       <Footer />
 
       <AnimatePresence>
-        {showSuccess && <SuccessMessage onClose={() => setShowSuccess(false)} />}
+        {showSuccess && submittedData && (
+          <SuccessMessage 
+            onClose={() => setShowSuccess(false)} 
+            formData={submittedData}
+          />
+        )}
       </AnimatePresence>
     </div>
   );

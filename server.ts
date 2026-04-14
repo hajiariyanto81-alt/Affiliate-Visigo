@@ -10,23 +10,37 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json());
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
   // API Route to handle Google Sheets URL (Proxy)
   app.post("/api/submit-affiliate", async (req, res) => {
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbyJctnTEjfciVzd9x5VTRptZW5naDor1JBhebJ-5AV5iqEUPgdN1nLh-_fB9sP0h5R7Kw/exec";
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbwEVgPsZ0nSdpsPM9kkOg4-uTpNTDWzzuk-HoO1CeweLfWCXM-c12XcRkXSR6KSsCrhCA/exec";
     
+    console.log("Proxying request to Google Script. Body size:", JSON.stringify(req.body).length);
+
     try {
       const response = await fetch(scriptUrl, {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(req.body),
+        redirect: 'follow'
       });
 
-      const result = await response.json();
-      res.json(result);
+      const responseText = await response.text();
+      console.log("Google Script Response (first 200 chars):", responseText.substring(0, 200));
+
+      try {
+        const result = JSON.parse(responseText);
+        res.json(result);
+      } catch (e) {
+        res.status(500).json({ success: false, message: "Google Script returned non-JSON: " + responseText.substring(0, 100) });
+      }
     } catch (error) {
       console.error("Error submitting to Google Sheets:", error);
-      res.status(500).json({ success: false, message: "Failed to submit data." });
+      res.status(500).json({ success: false, message: "Failed to submit data: " + (error instanceof Error ? error.message : String(error)) });
     }
   });
 

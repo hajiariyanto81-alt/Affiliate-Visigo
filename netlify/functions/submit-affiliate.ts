@@ -5,15 +5,31 @@ export const handler: Handler = async (event) => {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
 
-  const scriptUrl = "https://script.google.com/macros/s/AKfycbyJctnTEjfciVzd9x5VTRptZW5naDor1JBhebJ-5AV5iqEUPgdN1nLh-_fB9sP0h5R7Kw/exec";
+  const scriptUrl = "https://script.google.com/macros/s/AKfycbwEVgPsZ0nSdpsPM9kkOg4-uTpNTDWzzuk-HoO1CeweLfWCXM-c12XcRkXSR6KSsCrhCA/exec";
 
   try {
     const response = await fetch(scriptUrl, {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: event.body,
+      redirect: 'follow'
     });
 
-    const result = await response.json();
+    const responseText = await response.text();
+    console.log("Google Script Response:", responseText);
+
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (e) {
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ success: false, message: "Google Script returned non-JSON response: " + responseText }),
+      };
+    }
+
     return {
       statusCode: 200,
       body: JSON.stringify(result),
