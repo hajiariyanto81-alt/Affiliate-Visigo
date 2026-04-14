@@ -9,6 +9,12 @@
   force = true
 
 [[redirects]]
+  from = "/api/cek-saldo"
+  to = "/.netlify/functions/cek-saldo"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
