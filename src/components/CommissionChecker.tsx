@@ -146,22 +146,29 @@ export const CommissionChecker = ({ onClose }: { onClose: () => void }) => {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-8">
-          {/* Search Form */}
-          <form onSubmit={handleCheck} className="relative">
-            <input 
-              type="number"
-              placeholder="Masukkan No. WhatsApp Terdaftar (Contoh: 0812...)"
-              className="w-full pl-12 pr-32 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-medium"
-              value={whatsapp}
-              onChange={(e) => setWhatsapp(e.target.value)}
-            />
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+          {/* Search Form - Responsive for Mobile */}
+          <form onSubmit={handleCheck} className="flex flex-col sm:relative gap-3 sm:gap-0">
+            <div className="relative flex-1">
+              <input 
+                type="number"
+                placeholder="Masukkan No. WhatsApp (Contoh: 0812...)"
+                className="w-full pl-12 pr-4 sm:pr-36 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-medium text-sm sm:text-base"
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+              />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            </div>
             <button 
               type="submit"
               disabled={loading || !whatsapp}
-              className="absolute right-2 top-1/2 -translate-y-1/2 px-6 py-2.5 bg-primary text-white rounded-xl font-bold text-sm hover:bg-primary-dark transition-all disabled:opacity-50"
+              className="sm:absolute sm:right-2 sm:top-1/2 sm:-translate-y-1/2 w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-primary text-white rounded-xl font-bold text-sm hover:bg-primary-dark transition-all disabled:opacity-50 shadow-lg shadow-primary/20 sm:shadow-none"
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Cek Sekarang"}
+              {loading ? (
+                <div className="flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Loading...</span>
+                </div>
+              ) : "Cek Sekarang"}
             </button>
           </form>
 
