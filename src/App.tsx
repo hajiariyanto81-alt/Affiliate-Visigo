@@ -918,11 +918,6 @@ const Footer = () => (
 );
 
 const SuccessMessage = ({ onClose, formData }: { onClose: () => void, formData: FormData }) => {
-  const handleWhatsApp = () => {
-    const message = `*PENDAFTARAN AFFILIATE VISIGO*\n\nHalo admin VisiGo, saya sudah mengisi form pendaftaran dan siap untuk mulai menghasilkan!\n\n*Data Pendaftar:*\n- Nama: ${formData.nama}\n- WhatsApp: ${formData.whatsapp}\n- Domisili: ${formData.domisili}\n- Umur: ${formData.umur || '-'}\n- Sosmed: ${formData.sosmed.join(', ')}\n\nMohon segera diproses ya admin, terima kasih!`;
-    window.open(`https://wa.me/6281296921892?text=${encodeURIComponent(message)}`, '_blank');
-  };
-
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -947,7 +942,19 @@ const SuccessMessage = ({ onClose, formData }: { onClose: () => void, formData: 
         
         <div className="space-y-3">
           <a 
-            href={`https://wa.me/6281296921892?text=${encodeURIComponent(`*PENDAFTARAN AFFILIATE VISIGO*\n\nHalo admin VisiGo, saya sudah mengisi form pendaftaran dan siap untuk mulai menghasilkan!\n\n*Data Pendaftar:*\n- Nama: ${formData.nama}\n- WhatsApp: ${formData.whatsapp}\n- Domisili: ${formData.domisili}\n- Umur: ${formData.umur || '-'}\n- Sosmed: ${formData.sosmed.join(', ')}\n\nMohon segera diproses ya admin, terima kasih!`)}`}
+            href={`https://wa.me/6281296921892?text=${encodeURIComponent(
+              "KONFIRMASI PENDAFTARAN VISIGO\n\n" +
+              "Nama: " + formData.nama + "\n" +
+              "WhatsApp: " + formData.whatsapp + "\n" +
+              "Domisili: " + formData.domisili + "\n" +
+              "Umur: " + formData.umur + "\n" +
+              "Sosmed: " + formData.sosmed.join(', ') + "\n" +
+              "Username: " + formData.username + "\n" +
+              "Alasan: " + formData.alasan + "\n" +
+              "Siap Share: " + formData.siapShare + "\n" +
+              "Komunitas: " + formData.komunitas + "\n\n" +
+              "Terima kasih admin!"
+            )}`}
             target="_blank"
             rel="noopener noreferrer"
             className="w-full py-5 bg-green-500 text-white rounded-2xl font-bold text-lg hover:bg-green-600 transition-all shadow-xl shadow-green-200 flex items-center justify-center gap-3 no-underline"
