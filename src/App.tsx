@@ -7,7 +7,8 @@ import {
   X,
   Clock,
   Loader2,
-  Wallet
+  Wallet,
+  Home
 } from 'lucide-react';
 
 // --- Lazy Components ---
@@ -139,16 +140,25 @@ const Navbar = ({ onCheckBalance }: { onCheckBalance: () => void }) => (
             AFFILIATE <span className="text-primary">VISIGO</span>
           </span>
         </div>
-        <div className="hidden md:flex items-center gap-8">
-          <a href="#cara-kerja" className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">Cara Kerja</a>
-          <button 
-            onClick={onCheckBalance}
-            className="text-sm font-bold text-primary hover:text-primary-dark transition-colors flex items-center gap-2"
+        <div className="flex items-center gap-2 sm:gap-6">
+          <a 
+            href="https://visigo.id" 
+            className="flex items-center gap-1.5 text-sm font-bold text-slate-600 hover:text-primary transition-colors px-3 py-1.5 rounded-full hover:bg-slate-50"
           >
-            <Wallet className="w-4 h-4" />
-            Cek Saldo
-          </button>
-          <a href="#daftar" className="px-4 py-2 bg-primary text-white rounded-full text-sm font-semibold hover:bg-primary-dark transition-all shadow-lg shadow-primary/20">Gabung Sekarang</a>
+            <Home className="w-4 h-4" />
+            <span className="hidden sm:inline">Ke Website Utama</span>
+          </a>
+          <div className="hidden md:flex items-center gap-6">
+            <a href="#cara-kerja" className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">Cara Kerja</a>
+            <button 
+              onClick={onCheckBalance}
+              className="text-sm font-bold text-primary hover:text-primary-dark transition-colors flex items-center gap-2"
+            >
+              <Wallet className="w-4 h-4" />
+              Cek Saldo
+            </button>
+            <a href="#daftar" className="px-4 py-2 bg-primary text-white rounded-full text-sm font-semibold hover:bg-primary-dark transition-all shadow-lg shadow-primary/20">Gabung Sekarang</a>
+          </div>
         </div>
       </div>
     </div>
@@ -232,7 +242,7 @@ const Hero = ({ onJoinClick, onCheckBalance }: { onJoinClick: () => void, onChec
 const Footer = () => (
   <footer className="py-12 bg-white border-t border-slate-100">
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-      <div className="flex items-center justify-center mb-6">
+      <div className="flex flex-col items-center justify-center mb-6 gap-4">
         <img 
           src="https://i.ibb.co.com/KxfSqqkx/VISIGO-LOGO.png" 
           alt="VisiGo Logo" 
@@ -240,6 +250,13 @@ const Footer = () => (
           referrerPolicy="no-referrer"
           loading="lazy"
         />
+        <a 
+          href="https://visigo.id" 
+          className="text-sm font-bold text-primary hover:underline flex items-center gap-2"
+        >
+          <Home className="w-4 h-4" />
+          Kembali ke Website Utama (visigo.id)
+        </a>
       </div>
       <p className="text-slate-500 text-sm">© 2026 VisiGo Indonesia. Semua hak dilindungi.</p>
     </div>
