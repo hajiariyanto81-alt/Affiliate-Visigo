@@ -13,25 +13,21 @@ async function startServer() {
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
-  // API Route to handle Google Sheets URL (Proxy)
+  // API Route to handle Google Sheets URL (Proxy POST)
   app.post("/api/submit-affiliate", async (req, res) => {
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbwEVgPsZ0nSdpsPM9kkOg4-uTpNTDWzzuk-HoO1CeweLfWCXM-c12XcRkXSR6KSsCrhCA/exec";
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbwCkJqLGB4Ukoqy5mV2ImTRCgP3HijGKXa8FZ4r169k7CUX6euS7KWHPN8jyaahCCjHHQ/exec";
     
-    console.log("Proxying request to Google Script. Body size:", JSON.stringify(req.body).length);
+    console.log("Proxying POST request to Google Script.");
 
     try {
       const response = await fetch(scriptUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(req.body),
         redirect: 'follow'
       });
 
       const responseText = await response.text();
-      console.log("Google Script Response (first 200 chars):", responseText.substring(0, 200));
-
       try {
         const result = JSON.parse(responseText);
         res.json(result);
@@ -39,8 +35,29 @@ async function startServer() {
         res.status(500).json({ success: false, message: "Google Script returned non-JSON: " + responseText.substring(0, 100) });
       }
     } catch (error) {
-      console.error("Error submitting to Google Sheets:", error);
-      res.status(500).json({ success: false, message: "Failed to submit data: " + (error instanceof Error ? error.message : String(error)) });
+      res.status(500).json({ success: false, message: "Failed to submit data." });
+    }
+  });
+
+  // API Route to handle Google Sheets URL (Proxy GET for Balance)
+  app.get("/api/cek-saldo", async (req, res) => {
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbwCkJqLGB4Ukoqy5mV2ImTRCgP3HijGKXa8FZ4r169k7CUX6euS7KWHPN8jyaahCCjHHQ/exec";
+    const { whatsapp } = req.query;
+    
+    const targetUrl = `${scriptUrl}?action=cekSaldo&whatsapp=${whatsapp}`;
+    console.log("Proxying GET request to Google Script for WA:", whatsapp);
+
+    try {
+      const response = await fetch(targetUrl, { redirect: 'follow' });
+      const responseText = await response.text();
+      try {
+        const result = JSON.parse(responseText);
+        res.json(result);
+      } catch (e) {
+        res.status(500).json({ success: false, message: "Invalid response from server." });
+      }
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Failed to fetch balance." });
     }
   });
 
