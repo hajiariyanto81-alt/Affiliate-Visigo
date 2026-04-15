@@ -9,8 +9,10 @@ import {
   TrendingUp,
   Calendar,
   User,
-  Package
+  Package,
+  Download
 } from 'lucide-react';
+import { AffiliateIDCard } from './AffiliateIDCard';
 
 interface Sale {
   tanggal: string;
@@ -25,6 +27,10 @@ interface BalanceData {
   success: boolean;
   total: number;
   history: Sale[];
+  affiliatorName?: string;
+  affiliatorDomisili?: string;
+  affiliatorPhoto?: string;
+  affiliateId?: string;
   message?: string;
 }
 
@@ -34,6 +40,7 @@ export const CommissionChecker = ({ onClose }: { onClose: () => void }) => {
   const [data, setData] = useState<BalanceData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null);
+  const [showIDCard, setShowIDCard] = useState(false);
 
   const handleCheck = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,6 +196,48 @@ export const CommissionChecker = ({ onClose }: { onClose: () => void }) => {
               animate={{ opacity: 1 }}
               className="space-y-8"
             >
+              {/* Affiliator Info */}
+              {(data.affiliatorName || data.affiliatorDomisili) && (
+                <div className="flex items-center gap-4 p-5 bg-slate-50 rounded-[2rem] border border-slate-100">
+                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-slate-100">
+                    <User className="w-6 h-6 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-slate-900 leading-tight">
+                      {data.affiliatorName || "Affiliator VisiGo"}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                      <Search className="w-3 h-3" />
+                      {data.affiliatorDomisili || "Lokasi tidak terdeteksi"}
+                    </p>
+                  </div>
+                  {data.affiliateId && (
+                    <button 
+                      onClick={() => setShowIDCard(!showIDCard)}
+                      className="px-4 py-2 bg-primary/10 text-primary rounded-xl text-xs font-bold hover:bg-primary/20 transition-all flex items-center gap-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      {showIDCard ? "Tutup ID Card" : "Download ID Card"}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {showIDCard && data && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-6 bg-slate-50 rounded-[2rem] border border-slate-100 flex flex-col items-center"
+                >
+                  <AffiliateIDCard 
+                    name={data.affiliatorName || ""}
+                    id={data.affiliateId || ""}
+                    domisili={data.affiliatorDomisili || ""}
+                    photo={data.affiliatorPhoto}
+                  />
+                </motion.div>
+              )}
+
               {/* Summary Card */}
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="p-6 bg-gradient-to-br from-primary to-primary-dark rounded-[2rem] text-white shadow-xl shadow-primary/20">

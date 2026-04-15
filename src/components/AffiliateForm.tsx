@@ -14,16 +14,19 @@ interface FormData {
   nama: string;
   whatsapp: string;
   domisili: string;
+  area: string;
   umur: string;
   sosmed: string[];
   username: string;
   alasan: string;
   siapShare: string;
   komunitas: string;
+  referensi: string;
   bankName: string;
   rekening: string;
   foto?: string;
   fotoName?: string;
+  affiliateId?: string;
 }
 
 export const AffiliateForm = ({ onSubmitSuccess }: { onSubmitSuccess: (data: FormData) => void }) => {
@@ -31,12 +34,14 @@ export const AffiliateForm = ({ onSubmitSuccess }: { onSubmitSuccess: (data: For
     nama: '',
     whatsapp: '',
     domisili: '',
+    area: '',
     umur: '',
     sosmed: [],
     username: '',
     alasan: '',
     siapShare: '',
     komunitas: '',
+    referensi: '',
     bankName: '',
     rekening: '',
     foto: '',
@@ -177,7 +182,10 @@ export const AffiliateForm = ({ onSubmitSuccess }: { onSubmitSuccess: (data: For
       }
       
       if (result.success) {
-        onSubmitSuccess(formData);
+        onSubmitSuccess({
+          ...formData,
+          affiliateId: result.affiliateId
+        });
       } else {
         setError("Gagal mengirim data: " + (result.message || "Cek konfigurasi kamu."));
       }
@@ -448,6 +456,35 @@ export const AffiliateForm = ({ onSubmitSuccess }: { onSubmitSuccess: (data: For
                   </div>
                 </div>
                 {fieldErrors.komunitas && <p className="text-xs text-red-500 font-medium">{fieldErrors.komunitas}</p>}
+              </div>
+
+              <div className="grid sm:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Referensi Tim VisiGo (Opsional)</label>
+                  <input 
+                    name="referensi"
+                    type="text" 
+                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all border-slate-200`}
+                    placeholder="Nama tim yang mengajak"
+                    value={formData.referensi}
+                    onChange={e => {
+                      setFormData({...formData, referensi: e.target.value});
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">VisiGo Area (Opsional)</label>
+                  <input 
+                    name="area"
+                    type="text" 
+                    className={`w-full px-4 py-3 bg-slate-50 border rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all border-slate-200`}
+                    placeholder="Contoh: Jakarta Selatan"
+                    value={formData.area}
+                    onChange={e => {
+                      setFormData({...formData, area: e.target.value});
+                    }}
+                  />
+                </div>
               </div>
 
               <div className="p-6 bg-primary/5 rounded-3xl border border-primary/10 space-y-6">

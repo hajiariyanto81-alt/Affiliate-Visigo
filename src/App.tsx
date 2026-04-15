@@ -37,6 +37,7 @@ interface FormData {
   rekening: string;
   foto?: string;
   fotoName?: string;
+  affiliateId?: string;
 }
 
 // --- Loading Component ---
@@ -131,7 +132,7 @@ const Navbar = ({ onCheckBalance }: { onCheckBalance: () => void }) => (
       <div className="flex justify-between items-center h-16">
         <div className="flex items-center gap-3">
           <img 
-            src="https://i.ibb.co.com/KxfSqqkx/VISIGO-LOGO.png" 
+            src="https://i.ibb.co.com/XxC5vKqD/VISIGO-LOGO.png" 
             alt="VisiGo Logo" 
             className="h-10 w-auto object-contain"
             referrerPolicy="no-referrer"
@@ -244,7 +245,7 @@ const Footer = () => (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
       <div className="flex flex-col items-center justify-center mb-6 gap-4">
         <img 
-          src="https://i.ibb.co.com/KxfSqqkx/VISIGO-LOGO.png" 
+          src="https://i.ibb.co.com/XxC5vKqD/VISIGO-LOGO.png" 
           alt="VisiGo Logo" 
           className="h-8 w-auto object-contain"
           referrerPolicy="no-referrer"
@@ -261,6 +262,52 @@ const Footer = () => (
       <p className="text-slate-500 text-sm">© 2026 VisiGo Indonesia. Semua hak dilindungi.</p>
     </div>
   </footer>
+);
+
+const FloatingRegisterButton = ({ onClick }: { onClick: () => void }) => (
+  <motion.button
+    initial={{ scale: 0, opacity: 0 }}
+    animate={{ 
+      scale: 1, 
+      opacity: 1,
+      y: [0, -10, 0],
+    }}
+    transition={{ 
+      initial: { duration: 0.3 },
+      y: { 
+        duration: 2, 
+        repeat: Infinity, 
+        ease: "easeInOut" 
+      }
+    }}
+    whileHover={{ scale: 1.1 }}
+    whileTap={{ scale: 0.9 }}
+    onClick={onClick}
+    className="fixed bottom-6 right-6 z-[70] flex flex-col items-center gap-1.5 group sm:bottom-10 sm:right-10 sm:gap-2"
+  >
+    {/* Pulsing Glow Effect */}
+    <div className="absolute inset-0 bg-primary rounded-full blur-xl opacity-40 animate-pulse group-hover:opacity-60 transition-opacity" />
+    
+    {/* The Bubble */}
+    <div className="relative flex items-center gap-2 bg-gradient-to-r from-primary to-primary-dark text-white px-4 py-3 rounded-full shadow-2xl shadow-primary/40 border-2 border-white/20 sm:gap-3 sm:px-6 sm:py-4">
+      <div className="flex flex-col items-start">
+        <span className="text-[8px] font-black uppercase tracking-[0.15em] leading-none opacity-80 sm:text-[10px] sm:tracking-[0.2em]">Join Sekarang</span>
+        <span className="text-sm font-black leading-none mt-1 sm:text-lg">DAFTAR GRATIS!</span>
+      </div>
+      <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm group-hover:bg-white/30 transition-colors sm:w-10 sm:h-10">
+        <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform sm:w-6 sm:h-6" />
+      </div>
+    </div>
+
+    {/* Tooltip-like badge */}
+    <motion.div 
+      animate={{ scale: [1, 1.1, 1] }}
+      transition={{ duration: 1, repeat: Infinity }}
+      className="bg-red-500 text-white text-[8px] font-bold px-2 py-0.5 rounded-full shadow-lg border border-white/20 sm:text-[9px]"
+    >
+      SLOT TERBATAS!
+    </motion.div>
+  </motion.button>
 );
 
 export default function App() {
@@ -281,6 +328,7 @@ export default function App() {
     <div className="min-h-screen">
       <SocialProof />
       <Navbar onCheckBalance={() => setShowChecker(true)} />
+      <FloatingRegisterButton onClick={scrollToForm} />
       <Hero onJoinClick={scrollToForm} onCheckBalance={() => setShowChecker(true)} />
       
       <Suspense fallback={<SectionLoader />}>
