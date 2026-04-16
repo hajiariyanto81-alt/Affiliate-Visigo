@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Smartphone, 
   Wallet, 
@@ -9,7 +9,8 @@ import {
   TrendingUp, 
   Clock, 
   Users, 
-  GraduationCap
+  GraduationCap,
+  MessageCircle
 } from 'lucide-react';
 
 export const Problem = () => (
@@ -218,3 +219,107 @@ export const Qualifications = () => (
     </div>
   </section>
 );
+
+export const FAQ = () => {
+  const [openIndex, setOpenIndex] = React.useState<number | null>(null);
+
+  const faqs = [
+    {
+      q: "Apakah pendaftaran Affiliate VisiGo gratis?",
+      a: "Ya, pendaftaran 100% GRATIS tanpa biaya apapun. Kamu bisa langsung mulai setelah mendaftar dan mendapatkan ID Affiliate."
+    },
+    {
+      q: "Bagaimana cara saya mendapatkan komisi?",
+      a: "Kamu akan mendapatkan komisi setiap kali ada orang yang melakukan booking layanan cek mata ke rumah melalui referensi kamu dan transaksi tersebut selesai (berhasil)."
+    },
+    {
+      q: "Kapan komisi saya akan dicairkan?",
+      a: "Komisi akan diproses dan dicairkan secara rutin ke rekening bank atau e-wallet yang telah kamu daftarkan di formulir pendaftaran."
+    },
+    {
+      q: "Apakah saya perlu stok kacamata atau alat cek mata?",
+      a: "Tidak perlu. Kamu hanya fokus pada promosi dan mencari orang yang membutuhkan layanan. Tim profesional VisiGo yang akan datang ke rumah customer untuk melakukan pengecekan dan menyediakan kacamata."
+    },
+    {
+      q: "Apakah ada target minimal penjualan setiap bulannya?",
+      a: "Tidak ada target minimal. Kamu bebas menentukan kapan dan seberapa sering ingin mempromosikan layanan VisiGo. Semakin banyak yang booking, semakin besar cuan kamu!"
+    },
+    {
+      q: "Bagaimana jika saya tidak punya pengalaman jualan?",
+      a: "Tenang saja! Kami menyediakan materi promosi siap pakai dan bimbingan strategis untuk membantu kamu mulai menghasilkan pendapatan pertama kamu."
+    }
+  ];
+
+  return (
+    <section id="faq" className="py-24 bg-slate-50">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Pertanyaan Populer (FAQ)</h2>
+          <p className="text-slate-600">Punya pertanyaan? Mungkin jawabannya ada di sini.</p>
+        </div>
+
+        <div className="space-y-4">
+          {faqs.map((faq, i) => (
+            <motion.div 
+              key={i}
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.05 }}
+              className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm"
+            >
+              <button 
+                onClick={() => setOpenIndex(openIndex === i ? null : i)}
+                className="w-full px-6 py-5 text-left flex items-center justify-between gap-4 hover:bg-slate-50 transition-colors"
+              >
+                <span className="font-bold text-slate-900">{faq.q}</span>
+                <motion.div
+                  animate={{ rotate: openIndex === i ? 180 : 0 }}
+                  className="shrink-0"
+                >
+                  <HelpCircle className={`w-5 h-5 ${openIndex === i ? 'text-primary' : 'text-slate-400'}`} />
+                </motion.div>
+              </button>
+              
+              <AnimatePresence>
+                {openIndex === i && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                  >
+                    <div className="px-6 pb-6 text-slate-600 leading-relaxed border-t border-slate-50 pt-4">
+                      {faq.a}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          ))}
+        </div>
+
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mt-16 p-8 bg-primary rounded-[2rem] text-white text-center shadow-xl shadow-primary/20"
+        >
+          <h3 className="text-xl font-bold mb-4">Masih punya pertanyaan lain?</h3>
+          <p className="text-white/80 mb-8 text-sm">
+            Gabung ke grup WhatsApp Affiliate VisiGo untuk diskusi langsung dengan tim kami dan affiliator lainnya.
+          </p>
+          <a 
+            href="https://chat.whatsapp.com/H2INCmYxljRG548MK4hvyD?mode=gi_t"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-3 px-8 py-4 bg-white text-primary rounded-2xl font-bold hover:bg-slate-50 transition-all shadow-lg"
+          >
+            <MessageCircle className="w-5 h-5" />
+            Gabung Grup WhatsApp Sekarang
+          </a>
+        </motion.div>
+      </div>
+    </section>
+  );
+};

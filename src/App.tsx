@@ -18,6 +18,7 @@ const Results = lazy(() => import('./components/Sections').then(m => ({ default:
 const HowItWorks = lazy(() => import('./components/Sections').then(m => ({ default: m.HowItWorks })));
 const Benefits = lazy(() => import('./components/Sections').then(m => ({ default: m.Benefits })));
 const Qualifications = lazy(() => import('./components/Sections').then(m => ({ default: m.Qualifications })));
+const FAQ = lazy(() => import('./components/Sections').then(m => ({ default: m.FAQ })));
 const AffiliateForm = lazy(() => import('./components/AffiliateForm').then(m => ({ default: m.AffiliateForm })));
 const SuccessMessage = lazy(() => import('./components/SuccessMessage').then(m => ({ default: m.SuccessMessage })));
 const CommissionChecker = lazy(() => import('./components/CommissionChecker').then(m => ({ default: m.CommissionChecker })));
@@ -151,6 +152,7 @@ const Navbar = ({ onCheckBalance }: { onCheckBalance: () => void }) => (
           </a>
           <div className="hidden md:flex items-center gap-6">
             <a href="#cara-kerja" className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">Cara Kerja</a>
+            <a href="#faq" className="text-sm font-medium text-slate-600 hover:text-primary transition-colors">FAQ</a>
             <button 
               onClick={onCheckBalance}
               className="text-sm font-bold text-primary hover:text-primary-dark transition-colors flex items-center gap-2"
@@ -338,6 +340,7 @@ export default function App() {
         <HowItWorks />
         <Benefits />
         <Qualifications />
+        <FAQ />
         
         <section className="py-20 bg-secondary/5">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">

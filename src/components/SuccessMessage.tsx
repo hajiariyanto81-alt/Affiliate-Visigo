@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { CheckCircle2, X, MessageCircle } from 'lucide-react';
+import { CheckCircle2, X, MessageCircle, Users } from 'lucide-react';
 import { AffiliateIDCard } from './AffiliateIDCard';
 
 interface FormData {
@@ -48,6 +48,15 @@ export const SuccessMessage = ({ onClose, formData }: { onClose: () => void, for
             </p>
             
             <div className="space-y-3">
+              <a 
+                href="https://chat.whatsapp.com/H2INCmYxljRG548MK4hvyD?mode=gi_t"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full py-4 bg-primary text-white rounded-2xl font-bold text-base hover:bg-primary-dark transition-all shadow-xl shadow-primary/20 flex items-center justify-center gap-3 no-underline border-2 border-white/20"
+              >
+                <Users className="w-5 h-5" />
+                Gabung Grup Affiliate
+              </a>
               <a 
                 href={`https://wa.me/6281296921892?text=${encodeURIComponent(
                   "KONFIRMASI PENDAFTARAN VISIGO\n\n" +
