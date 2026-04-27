@@ -15,7 +15,7 @@ async function startServer() {
 
   // API Route to handle Google Sheets URL (Proxy POST)
   app.post("/api/submit-affiliate", async (req, res) => {
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbwDNuqRdfgBbQIDYHZBCznML5q2av-t2KdHbNSITrRC--WSHcqqBdMH5NlejOx66tRsnQ/exec";
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbyAI_coZWU1N7NW-VYG0bdbxgjBQNRohUxGThkxfc0vwjnRMzbI7YrQr1uOOP5DirycdA/exec";
     
     console.log("Proxying POST request to Google Script.");
 
@@ -41,7 +41,7 @@ async function startServer() {
 
   // API Route to handle Google Sheets URL (Proxy GET for Balance)
   app.get("/api/cek-saldo", async (req, res) => {
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbwDNuqRdfgBbQIDYHZBCznML5q2av-t2KdHbNSITrRC--WSHcqqBdMH5NlejOx66tRsnQ/exec";
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbyAI_coZWU1N7NW-VYG0bdbxgjBQNRohUxGThkxfc0vwjnRMzbI7YrQr1uOOP5DirycdA/exec";
     const { whatsapp } = req.query;
     
     const targetUrl = `${scriptUrl}?action=cekSaldo&whatsapp=${whatsapp}`;

@@ -15,6 +15,27 @@ function doPost(e) {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheets()[0]; 
     
+    // --- CEK DUPLIKASI WA ---
+    var waBaru = bersihkanWA(data.whatsapp);
+    var namaBaru = (data.nama || "").toString().toLowerCase().trim();
+    
+    if (waBaru !== "") {
+      var displayData = sheet.getDataRange().getDisplayValues(); // Ambil apa yang tampil di layar
+      for (var i = 1; i < displayData.length; i++) {
+        var waLama = bersihkanWA(displayData[i][2]); // Kolom C (WhatsApp)
+        var namaLama = displayData[i][1].toString().toLowerCase().trim(); // Kolom B (Nama)
+        
+        // Cek jika WA sama ATAU (Nama sama & WA sama)
+        // Disini kita blokir jika WA sudah ada (karena WA harus unik)
+        if (waLama === waBaru) {
+          return ContentService.createTextOutput(JSON.stringify({
+            success: false, 
+            message: "Nomor WhatsApp ini sudah terdaftar sebagai Affiliate dengan nama '" + displayData[i][1] + "'. Silakan gunakan nomor lain atau cek saldo kamu."
+          })).setMimeType(ContentService.MimeType.JSON);
+        }
+      }
+    }
+    
     // Generate Unique ID
     var randomNum = Math.floor(10000 + Math.random() * 90000);
     var affiliateId = "VG-AFF-" + randomNum;
@@ -99,7 +120,7 @@ function doGet(e) {
       var affiliateId = "";
       
       // Cari data affiliator di Sheet 1
-      var affiliateData = sheetAffiliates.getDataRange().getValues();
+      var affiliateData = sheetAffiliates.getDataRange().getDisplayValues(); // Lebih aman pakai DisplayValues
       for (var j = 1; j < affiliateData.length; j++) {
         var waAff = affiliateData[j][2] ? bersihkanWA(affiliateData[j][2]) : "";
         if (waAff === waTarget && waTarget !== "") {
@@ -107,12 +128,6 @@ function doGet(e) {
           affiliatorDomisili = affiliateData[j][3] || ""; // Kolom D
           affiliateId = affiliateData[j][14] || ""; // Kolom O
           affiliatorPhoto = affiliateData[j][15] || ""; // Kolom P
-          
-          // Jika namaCell adalah HYPERLINK, ambil teks namanya saja
-          if (affiliatorName.toString().startsWith("=HYPERLINK")) {
-            var match = affiliatorName.match(/";\s*"([^"]+)"/);
-            if (match) affiliatorName = match[1];
-          }
           break;
         }
       }
