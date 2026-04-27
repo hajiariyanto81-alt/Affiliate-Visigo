@@ -10,6 +10,7 @@ import {
   Wallet,
   Home
 } from 'lucide-react';
+import { ErrorBoundary } from './components/ErrorBoundary';
 
 // --- Lazy Components ---
 const Problem = lazy(() => import('./components/Sections').then(m => ({ default: m.Problem })));
@@ -312,10 +313,30 @@ const FloatingRegisterButton = ({ onClick }: { onClick: () => void }) => (
   </motion.button>
 );
 
+// --- Error Boundary dihapus, sudah dipindah ke file terpisah ---
+
 export default function App() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showChecker, setShowChecker] = useState(false);
   const [submittedData, setSubmittedData] = useState<FormData | null>(null);
+
+  useEffect(() => {
+    // Set flag for global error handler in index.html
+    (window as any).__REACT_HYDRATED__ = true;
+
+    // Catch unhandled rejections (like chunk loading failures)
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      console.warn("Unhandled promise rejection:", event.reason);
+      // Optional: reload if chunk fails
+      if (event.reason?.name === 'ChunkLoadError' || event.reason?.message?.includes('Loading chunk')) {
+        console.log("Chunk load error detected, reloading...");
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    return () => window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+  }, []);
 
   const scrollToForm = () => {
     document.getElementById('daftar')?.scrollIntoView({ behavior: 'smooth' });
@@ -327,60 +348,62 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen">
-      <SocialProof />
-      <Navbar onCheckBalance={() => setShowChecker(true)} />
-      <FloatingRegisterButton onClick={scrollToForm} />
-      <Hero onJoinClick={scrollToForm} onCheckBalance={() => setShowChecker(true)} />
-      
-      <Suspense fallback={<SectionLoader />}>
-        <Problem />
-        <Solution />
-        <Results />
-        <HowItWorks />
-        <Benefits />
-        <Qualifications />
-        <FAQ />
+    <ErrorBoundary>
+      <div className="min-h-screen">
+        <SocialProof />
+        <Navbar onCheckBalance={() => setShowChecker(true)} />
+        <FloatingRegisterButton onClick={scrollToForm} />
+        <Hero onJoinClick={scrollToForm} onCheckBalance={() => setShowChecker(true)} />
         
-        <section className="py-20 bg-secondary/5">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <h2 className="text-3xl md:text-5xl font-bold text-slate-900 mb-8">Jangan cuma jadi penonton.</h2>
-            <p className="text-xl text-slate-600 mb-12 max-w-2xl mx-auto">
-              Mulai hasilkan dari peluang yang ada di depan mata kamu sekarang.
-            </p>
-            <div className="flex justify-center">
-              <button 
-                onClick={scrollToForm}
-                className="w-full sm:w-auto px-10 py-5 bg-primary text-white rounded-2xl font-bold text-xl hover:bg-primary-dark shadow-2xl shadow-primary/30"
-              >
-                Daftar Sekarang
-              </button>
+        <Suspense fallback={<SectionLoader />}>
+          <Problem />
+          <Solution />
+          <Results />
+          <HowItWorks />
+          <Benefits />
+          <Qualifications />
+          <FAQ />
+          
+          <section className="py-20 bg-secondary/5">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+              <h2 className="text-3xl md:text-5xl font-bold text-slate-900 mb-8">Jangan cuma jadi penonton.</h2>
+              <p className="text-xl text-slate-600 mb-12 max-w-2xl mx-auto">
+                Mulai hasilkan dari peluang yang ada di depan mata kamu sekarang.
+              </p>
+              <div className="flex justify-center">
+                <button 
+                  onClick={scrollToForm}
+                  className="w-full sm:w-auto px-10 py-5 bg-primary text-white rounded-2xl font-bold text-xl hover:bg-primary-dark shadow-2xl shadow-primary/30"
+                >
+                  Daftar Sekarang
+                </button>
+              </div>
+              <p className="mt-8 text-red-500 font-bold flex items-center justify-center gap-2 animate-pulse">
+                <Clock className="w-5 h-5" />
+                ⚠️ Slot affiliate terbatas minggu ini!
+              </p>
             </div>
-            <p className="mt-8 text-red-500 font-bold flex items-center justify-center gap-2 animate-pulse">
-              <Clock className="w-5 h-5" />
-              ⚠️ Slot affiliate terbatas minggu ini!
-            </p>
-          </div>
-        </section>
+          </section>
 
-        <AffiliateForm onSubmitSuccess={handleSuccess} />
-      </Suspense>
-      
-      <Footer />
+          <AffiliateForm onSubmitSuccess={handleSuccess} />
+        </Suspense>
+        
+        <Footer />
 
-      <Suspense fallback={null}>
-        <AnimatePresence>
-          {showSuccess && submittedData && (
-            <SuccessMessage 
-              onClose={() => setShowSuccess(false)} 
-              formData={submittedData}
-            />
-          )}
-          {showChecker && (
-            <CommissionChecker onClose={() => setShowChecker(false)} />
-          )}
-        </AnimatePresence>
-      </Suspense>
-    </div>
+        <Suspense fallback={null}>
+          <AnimatePresence>
+            {showSuccess && submittedData && (
+              <SuccessMessage 
+                onClose={() => setShowSuccess(false)} 
+                formData={submittedData}
+              />
+            )}
+            {showChecker && (
+              <CommissionChecker onClose={() => setShowChecker(false)} />
+            )}
+          </AnimatePresence>
+        </Suspense>
+      </div>
+    </ErrorBoundary>
   );
 }
