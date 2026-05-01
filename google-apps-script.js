@@ -1,124 +1,100 @@
-// --- KONFIGURASI ---
+/* 
+  --- VISIGO AFFILIATE SCRIPT V6 (FINAL) ---
+  1. Copy semua kode ini.
+  2. Paste ke Editor Google Apps Script Anda.
+  3. Pastikan SPREADSHEET_ID sudah benar (sudah saya isi di bawah).
+  4. Klik DEPLOY -> NEW DEPLOYMENT -> WHO HAS ACCESS: ANYONE.
+*/
+
+var SPREADSHEET_ID = "1Av09z22gSOKyLJW9NZh93xQZgwqWjmLvWs6jTjAMNFQ"; 
 var FOLDER_ID = "1aNlSSF_K5yn1q7PIl1Qw2l8WErqHNRc2"; 
+
+function getSheet(index) {
+  try {
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    if (!ss) throw new Error("Spreadsheet inaccessible!");
+    var sheet = ss.getSheets()[index];
+    if (!sheet) throw new Error("Sheet index " + index + " not found!");
+    return sheet;
+  } catch (e) {
+    throw new Error("Gagal akses Spreadsheet: " + e.message);
+  }
+}
 
 function bersihkanWA(wa) {
   if (!wa) return "";
-  // Hapus semua karakter non-angka
   var clean = wa.toString().replace(/[^0-9]/g, '');
-  
-  // Standarisasi: Pastikan tidak ada prefix 0 atau 62 di depan untuk perbandingan
-  // Kita coba bersihkan secara berulang jika ada double prefix (misal 6208...)
-  var result = clean;
-  if (result.startsWith('62')) result = result.substring(2);
-  if (result.startsWith('0')) result = result.substring(1);
-  
-  return result;
+  // Standarisasi ke format 62...
+  if (clean.startsWith('0')) clean = '62' + clean.substr(1);
+  else if (clean.startsWith('8')) clean = '62' + clean;
+  return clean;
 }
 
 function doPost(e) {
   try {
+    if (!e.postData || !e.postData.contents) throw new Error("No data received");
     var data = JSON.parse(e.postData.contents);
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheets()[0]; 
-    if (!sheet) throw new Error("Sheet utama tidak ditemukan!");
+    var sheet = getSheet(0); 
     
-    // --- 1. CEK DUPLIKASI DATA (WA & NAMA) ---
+    // 1. CEK DUPLIKAT WHATSAPP
     var waBaru = bersihkanWA(data.whatsapp);
-    var namaBaru = (data.nama || "").toString().toLowerCase().trim();
-    
-    if (waBaru !== "") {
-      var displayData = sheet.getDataRange().getDisplayValues();
+    var range = sheet.getDataRange();
+    if (range.getNumRows() > 1) {
+      var displayData = range.getDisplayValues();
       for (var i = 1; i < displayData.length; i++) {
-        var waLama = bersihkanWA(displayData[i][2]); // Kolom C (WhatsApp)
-        var namaLama = (displayData[i][1] || "").toString().toLowerCase().trim(); // Kolom B (Nama)
-        
-        // Ambil nama murni jika dia HYPERLINK
-        if (namaLama.startsWith("=hyperlink")) {
-          var match = namaLama.match(/";\s*"([^"]+)"/i);
-          if (match) namaLama = match[1].toLowerCase().trim();
-        }
-
-        // Cek jika WA sama ATAU Nama & Domisili sama (untuk jaga-jaga)
-        if (waLama === waBaru) {
-          var namaDisplay = displayData[i][1];
-          // Jika nama hpyerlink, bersihkan untuk pesan error
-          if (namaDisplay.toString().startsWith("=HYPERLINK")) {
-             var m = namaDisplay.match(/";\s*"([^"]+)"/i);
-             if (m) namaDisplay = m[1];
-          }
+        var waLama = bersihkanWA(displayData[i][2]);
+        if (waLama === waBaru && waBaru !== "") {
           return ContentService.createTextOutput(JSON.stringify({
             success: false, 
-            message: "Nomor ini sudah terdaftar sebagai Affiliate dengan nama '" + namaDisplay + "'. Silakan gunakan nomor lain atau cek saldo kamu."
+            message: "Nomor WhatsApp " + data.whatsapp + " sudah terdaftar sebagai Affiliate. Silakan gunakan nomor lain."
           })).setMimeType(ContentService.MimeType.JSON);
         }
       }
     }
     
-    // Generate Unique ID
-    var randomNum = Math.floor(10000 + Math.random() * 90000);
-    var affiliateId = "VG-AFF-" + randomNum;
-
-    // --- PROSES FOTO ---
+    // 2. PROSES FOTO (DRIVE)
     var fileUrl = "";
     if (data.foto && FOLDER_ID !== "") {
       try {
         var folder = DriveApp.getFolderById(FOLDER_ID);
-        var contentType = data.foto.substring(5, data.foto.indexOf(';'));
-        var bytes = Utilities.base64Decode(data.foto.split(',')[1]);
-        var blob = Utilities.newBlob(bytes, contentType, data.fotoName || "foto_affiliate.jpg");
+        var parts = data.foto.split(',');
+        var contentType = parts[0].substring(parts[0].indexOf(':') + 1, parts[0].indexOf(';'));
+        var bytes = Utilities.base64Decode(parts[1]);
+        var blob = Utilities.newBlob(bytes, contentType, data.fotoName || "foto.jpg");
         var file = folder.createFile(blob);
         file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
         fileUrl = file.getUrl();
-      } catch (fError) { fileUrl = "Error Drive: " + fError.toString(); }
+      } catch (fError) { fileUrl = "Drive Error: " + fError.toString(); }
     }
 
-    // --- ANTI ERROR FORMULA (Escape Double Quotes & Pakai Titik Koma ;) ---
+    // 3. GENERATE ID & SIMPAN DATA
+    var randomId = "VG-AFF-" + Math.floor(10000 + Math.random() * 90000);
     var safeNama = (data.nama || "").toString().replace(/"/g, '""');
     var safeWA = (data.whatsapp || "").toString().replace(/"/g, '""');
     
-    // --- LOGIKA HYPERLINK (PENTING: Pakai ; bukan ,) ---
+    // Gunakan titik koma (;) sebagai pemisah rumus untuk Regional Indonesia
     var namaCell = fileUrl ? '=HYPERLINK("' + fileUrl + '"; "' + safeNama + '")' : safeNama;
-    var waClean = (data.whatsapp || "").toString().replace(/[^0-9]/g, '');
-    if (waClean.startsWith('0')) waClean = '62' + waClean.substr(1);
+    var waClean = bersihkanWA(data.whatsapp);
     var waCell = '=HYPERLINK("https://wa.me/' + waClean + '"; "' + safeWA + '")';
     
-    // --- SIMPAN DATA (Urutan Kolom A-P) ---
     var rowData = [
-      new Date(),             // A: Tanggal Daftar
-      namaCell,               // B: Nama Lengkap (Link Foto)
-      waCell,                 // C: WhatsApp (Link Chat)
-      data.domisili || "-",   // D: Domisili
-      data.umur || "-",       // E: Umur
-      (data.sosmed || []).join(", ") || "-", // F: Sosmed Aktif
-      data.username || "-",   // G: Username/Link
-      data.alasan || "-",     // H: Alasan Bergabung
-      data.siapShare || "-",  // I: Komitmen Share
-      data.komunitas || "-",  // J: Jumlah Komunitas
-      data.referensi || "-",  // K: Referensi Tim VisiGo
-      data.area || "-",       // L: VisiGo Area
-      data.bankName || "-",   // M: Bank/E-Wallet
-      data.rekening || "-",   // N: No. Rekening
-      affiliateId,            // O: Affiliate ID
-      fileUrl                 // P: Link Foto (Raw)
+      new Date(), namaCell, waCell, data.domisili || "-", data.umur || "-", 
+      (data.sosmed || []).join(", ") || "-", data.username || "-", 
+      data.alasan || "-", data.siapShare || "-", data.komunitas || "-", 
+      data.referensi || "-", data.area || "-", data.bankName || "-", 
+      "'" + (data.rekening || ""), randomId, fileUrl
     ];
     
     sheet.appendRow(rowData);
 
-    // Update Header (Selalu pastikan header benar di baris 1)
-    var headers = ["Tanggal Daftar", "Nama Lengkap", "WhatsApp", "Domisili", "Umur", "Sosmed Aktif", "Username/Link", "Alasan Bergabung", "Komitmen Share", "Jumlah Komunitas", "Referensi Tim", "VisiGo Area", "Bank/E-Wallet", "No. Rekening", "Affiliate ID", "Link Foto"];
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight("bold").setBackground("#004E92").setFontColor("white");
+    // Format Header jika belum ada
+    var hRange = sheet.getRange(1, 1, 1, 16);
+    hRange.setValues([["Tanggal Daftar", "Nama Lengkap", "WhatsApp", "Domisili", "Umur", "Sosmed Aktif", "Username/Link", "Alasan Bergabung", "Komitmen Share", "Jumlah Komunitas", "Referensi Tim", "VisiGo Area", "Bank/E-Wallet", "No. Rekening", "Affiliate ID", "Link Foto"]]);
+    hRange.setFontWeight("bold").setBackground("#004E92").setFontColor("white");
 
-    // Kirim balik ID ke website
-    return ContentService.createTextOutput(JSON.stringify({
-      success: true, 
-      affiliateId: affiliateId
-    })).setMimeType(ContentService.MimeType.JSON);
-
+    return ContentService.createTextOutput(JSON.stringify({success: true, affiliateId: randomId})).setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({
-      success: false, 
-      message: error.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({success: false, message: error.toString()})).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
@@ -127,52 +103,44 @@ function doGet(e) {
     var action = e.parameter.action;
     var whatsapp = e.parameter.whatsapp;
     if (action === "cekSaldo") {
-      var ss = SpreadsheetApp.getActiveSpreadsheet();
-      var sheetAffiliates = ss.getSheets()[0];
-      var sheetSales = ss.getSheets()[1]; 
-      
+      var sheetAffiliates = getSheet(0);
+      var sheetSales = getSheet(1); 
       var waTarget = bersihkanWA(whatsapp);
-      var affiliatorName = "";
-      var affiliatorDomisili = "";
-      var affiliatorPhoto = "";
-      var affiliateId = "";
       
-      // Cari data affiliator di Sheet 1
-      var affiliateData = sheetAffiliates.getDataRange().getDisplayValues(); // Lebih aman pakai DisplayValues
-      for (var j = 1; j < affiliateData.length; j++) {
-        var waAff = affiliateData[j][2] ? bersihkanWA(affiliateData[j][2]) : "";
-        if (waAff === waTarget && waTarget !== "") {
-          affiliatorName = affiliateData[j][1] || ""; // Kolom B
-          affiliatorDomisili = affiliateData[j][3] || ""; // Kolom D
-          affiliateId = affiliateData[j][14] || ""; // Kolom O
-          affiliatorPhoto = affiliateData[j][15] || ""; // Kolom P
+      var affName = "", affDom = "", affPhoto = "", affId = "";
+      var affData = sheetAffiliates.getDataRange().getDisplayValues();
+      for (var j = 1; j < affData.length; j++) {
+        if (bersihkanWA(affData[j][2]) === waTarget && waTarget !== "") {
+          affName = affData[j][1];
+          affDom = affData[j][3];
+          affId = affData[j][14];
+          affPhoto = affData[j][15];
           break;
         }
       }
+
+      if (!sheetSales) return ContentService.createTextOutput(JSON.stringify({success: false, message: "Sheet Data Penjualan belum ada!"})).setMimeType(ContentService.MimeType.JSON);
       
-      if (!sheetSales) return ContentService.createTextOutput(JSON.stringify({success: false, message: "Sheet 2 belum ada!"})).setMimeType(ContentService.MimeType.JSON);
-      var data = sheetSales.getDataRange().getValues();
-      var results = [];
-      var totalKomisi = 0;
-      
-      for (var i = 1; i < data.length; i++) {
-        var row = data[i];
-        var waInSheet = row[7] ? bersihkanWA(row[7]) : ""; 
-        if (waInSheet === waTarget && waTarget !== "") {
-          results.push({ tanggal: row[0], customer: row[1], alamat: row[2] || "-", produk: row[3], komisi: parseFloat(row[5] || 0), status: row[8] || "Pending" });
-          totalKomisi += parseFloat(row[5] || 0);
+      var salesData = sheetSales.getDataRange().getValues();
+      var history = [];
+      var total = 0;
+      for (var i = 1; i < salesData.length; i++) {
+        var row = salesData[i];
+        if (row[7] && bersihkanWA(row[7]) === waTarget && waTarget !== "") {
+          history.push({ 
+            tanggal: row[0], customer: row[1], alamat: row[2] || "-", 
+            produk: row[3], komisi: parseFloat(row[5] || 0), status: row[8] || "Pending" 
+          });
+          total += parseFloat(row[5] || 0);
         }
       }
-      
       return ContentService.createTextOutput(JSON.stringify({ 
-        success: true, 
-        total: totalKomisi, 
-        history: results,
-        affiliatorName: affiliatorName,
-        affiliatorDomisili: affiliatorDomisili,
-        affiliatorPhoto: affiliatorPhoto,
-        affiliateId: affiliateId
+        success: true, total: total, history: history,
+        affiliatorName: affName, affiliatorDomisili: affDom,
+        affiliatorPhoto: affPhoto, affiliateId: affId
       })).setMimeType(ContentService.MimeType.JSON);
     }
-  } catch (err) { return ContentService.createTextOutput(JSON.stringify({success: false, message: err.toString()})).setMimeType(ContentService.MimeType.JSON); }
+  } catch (err) { 
+    return ContentService.createTextOutput(JSON.stringify({success: false, message: err.toString()})).setMimeType(ContentService.MimeType.JSON); 
+  }
 }

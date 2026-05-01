@@ -5,7 +5,7 @@ export const handler: Handler = async (event) => {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
 
-  const scriptUrl = "https://script.google.com/macros/s/AKfycbzw4iA01rReSAsdXoT2tlIqUpjpJ384jWMmEIqDOnJMxBhcai15JqcnnfX6LMlvbsF4NQ/exec";
+  const scriptUrl = "https://script.google.com/macros/s/AKfycbyxDwd1gPw4fZRmzTk8aU-nzLE4u4bVib4sQ07PJYMAK04Cx9cMNuIxohDDnkcYaSix6w/exec";
   const whatsapp = event.queryStringParameters?.whatsapp;
 
   if (!whatsapp) {

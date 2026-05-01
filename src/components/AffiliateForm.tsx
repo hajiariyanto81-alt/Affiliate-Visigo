@@ -7,8 +7,10 @@ import {
   Upload, 
   Loader2,
   ChevronDown,
-  Send
+  Send,
+  AlertCircle
 } from 'lucide-react';
+import { motion } from 'motion/react';
 
 interface FormData {
   nama: string;
@@ -162,15 +164,23 @@ export const AffiliateForm = ({ onSubmitSuccess }: { onSubmitSuccess: (data: For
     }
 
     setIsSubmitting(true);
+    setError(null);
     
     try {
+      // Create a timeout controller
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
+
       const response = await fetch('/api/submit-affiliate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       const responseText = await response.text();
       let result;
@@ -178,7 +188,7 @@ export const AffiliateForm = ({ onSubmitSuccess }: { onSubmitSuccess: (data: For
       try {
         result = JSON.parse(responseText);
       } catch (e) {
-        throw new Error(`Server Error (${response.status}): Respon tidak valid.`);
+        throw new Error(`Server Error (${response.status}): Script tidak merespon dengan data yang benar. Silakan cek deployment Apps Script.`);
       }
       
       if (result.success) {
@@ -187,10 +197,18 @@ export const AffiliateForm = ({ onSubmitSuccess }: { onSubmitSuccess: (data: For
           affiliateId: result.affiliateId
         });
       } else {
-        setError("Gagal mengirim data: " + (result.message || "Cek konfigurasi kamu."));
+        setError(result.message || "Gagal mengirim data. Cek apakah nomor WA sudah terdaftar?");
+        // Scroll to error container
+        setTimeout(() => {
+          document.getElementById('form-error-container')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
       }
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "Terjadi kesalahan saat mengirim data.");
+    } catch (err: any) {
+      if (err.name === 'AbortError') {
+        setError("Waktu habis. Koneksi terlalu lambat.");
+      } else {
+        setError("Error: " + (err.message || "Gagal menyambung ke server."));
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -208,10 +226,18 @@ export const AffiliateForm = ({ onSubmitSuccess }: { onSubmitSuccess: (data: For
           
             <form onSubmit={handleSubmit} className="space-y-8 notranslate" translate="no" key="main-affiliate-form">
             {error && (
-              <div key="form-error-container" className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-sm font-medium flex items-center gap-3">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse flex-shrink-0" />
-                <span className="flex-1">{error}</span>
-              </div>
+              <motion.div 
+                id="form-error-container"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                key="form-error-container" 
+                className="p-6 bg-red-50 border-2 border-red-200 text-red-700 rounded-[2rem] text-sm font-bold flex items-center gap-4 shadow-xl shadow-red-100"
+              >
+                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center shrink-0">
+                  <AlertCircle className="w-6 h-6 text-red-500" />
+                </div>
+                <span className="flex-1 text-base leading-tight">{error}</span>
+              </motion.div>
             )}
 
             <div className="space-y-6" key="form-content">

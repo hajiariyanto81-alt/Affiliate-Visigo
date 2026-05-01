@@ -15,9 +15,9 @@ async function startServer() {
 
   // API Route to handle Google Sheets URL (Proxy POST)
   app.post("/api/submit-affiliate", async (req, res) => {
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbzw4iA01rReSAsdXoT2tlIqUpjpJ384jWMmEIqDOnJMxBhcai15JqcnnfX6LMlvbsF4NQ/exec";
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbyxDwd1gPw4fZRmzTk8aU-nzLE4u4bVib4sQ07PJYMAK04Cx9cMNuIxohDDnkcYaSix6w/exec";
     
-    console.log("Proxying POST request to Google Script.");
+    console.log("Proxying POST request to Google Script. Data keys:", Object.keys(req.body));
 
     try {
       const response = await fetch(scriptUrl, {
@@ -28,20 +28,28 @@ async function startServer() {
       });
 
       const responseText = await response.text();
+      console.log("Google Script Response Status:", response.status);
+      console.log("Google Script Response Body (first 200 chars):", responseText.substring(0, 200));
+
       try {
         const result = JSON.parse(responseText);
         res.json(result);
       } catch (e) {
-        res.status(500).json({ success: false, message: "Google Script returned non-JSON: " + responseText.substring(0, 100) });
+        console.error("Failed to parse Google Script response as JSON:", responseText);
+        res.status(500).json({ 
+          success: false, 
+          message: "Google Script returned non-JSON. This often means the script hasn't been deployed correctly or is returning an HTML error page."
+        });
       }
-    } catch (error) {
-      res.status(500).json({ success: false, message: "Failed to submit data." });
+    } catch (error: any) {
+      console.error("Error proxying to Google Script:", error);
+      res.status(500).json({ success: false, message: "Network error when reaching Google Script: " + error.message });
     }
   });
 
   // API Route to handle Google Sheets URL (Proxy GET for Balance)
   app.get("/api/cek-saldo", async (req, res) => {
-    const scriptUrl = "https://script.google.com/macros/s/AKfycbzw4iA01rReSAsdXoT2tlIqUpjpJ384jWMmEIqDOnJMxBhcai15JqcnnfX6LMlvbsF4NQ/exec";
+    const scriptUrl = "https://script.google.com/macros/s/AKfycbyxDwd1gPw4fZRmzTk8aU-nzLE4u4bVib4sQ07PJYMAK04Cx9cMNuIxohDDnkcYaSix6w/exec";
     const { whatsapp } = req.query;
     
     const targetUrl = `${scriptUrl}?action=cekSaldo&whatsapp=${whatsapp}`;
