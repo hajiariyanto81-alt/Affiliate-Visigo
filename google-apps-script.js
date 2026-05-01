@@ -3,10 +3,16 @@ var FOLDER_ID = "1aNlSSF_K5yn1q7PIl1Qw2l8WErqHNRc2";
 
 function bersihkanWA(wa) {
   if (!wa) return "";
+  // Hapus semua karakter non-angka
   var clean = wa.toString().replace(/[^0-9]/g, '');
-  if (clean.startsWith('62')) return clean.substring(2);
-  if (clean.startsWith('0')) return clean.substring(1);
-  return clean;
+  
+  // Standarisasi: Pastikan tidak ada prefix 0 atau 62 di depan untuk perbandingan
+  // Kita coba bersihkan secara berulang jika ada double prefix (misal 6208...)
+  var result = clean;
+  if (result.startsWith('62')) result = result.substring(2);
+  if (result.startsWith('0')) result = result.substring(1);
+  
+  return result;
 }
 
 function doPost(e) {
@@ -14,23 +20,35 @@ function doPost(e) {
     var data = JSON.parse(e.postData.contents);
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheets()[0]; 
+    if (!sheet) throw new Error("Sheet utama tidak ditemukan!");
     
-    // --- CEK DUPLIKASI WA ---
+    // --- 1. CEK DUPLIKASI DATA (WA & NAMA) ---
     var waBaru = bersihkanWA(data.whatsapp);
     var namaBaru = (data.nama || "").toString().toLowerCase().trim();
     
     if (waBaru !== "") {
-      var displayData = sheet.getDataRange().getDisplayValues(); // Ambil apa yang tampil di layar
+      var displayData = sheet.getDataRange().getDisplayValues();
       for (var i = 1; i < displayData.length; i++) {
         var waLama = bersihkanWA(displayData[i][2]); // Kolom C (WhatsApp)
-        var namaLama = displayData[i][1].toString().toLowerCase().trim(); // Kolom B (Nama)
+        var namaLama = (displayData[i][1] || "").toString().toLowerCase().trim(); // Kolom B (Nama)
         
-        // Cek jika WA sama ATAU (Nama sama & WA sama)
-        // Disini kita blokir jika WA sudah ada (karena WA harus unik)
+        // Ambil nama murni jika dia HYPERLINK
+        if (namaLama.startsWith("=hyperlink")) {
+          var match = namaLama.match(/";\s*"([^"]+)"/i);
+          if (match) namaLama = match[1].toLowerCase().trim();
+        }
+
+        // Cek jika WA sama ATAU Nama & Domisili sama (untuk jaga-jaga)
         if (waLama === waBaru) {
+          var namaDisplay = displayData[i][1];
+          // Jika nama hpyerlink, bersihkan untuk pesan error
+          if (namaDisplay.toString().startsWith("=HYPERLINK")) {
+             var m = namaDisplay.match(/";\s*"([^"]+)"/i);
+             if (m) namaDisplay = m[1];
+          }
           return ContentService.createTextOutput(JSON.stringify({
             success: false, 
-            message: "Nomor WhatsApp ini sudah terdaftar sebagai Affiliate dengan nama '" + displayData[i][1] + "'. Silakan gunakan nomor lain atau cek saldo kamu."
+            message: "Nomor ini sudah terdaftar sebagai Affiliate dengan nama '" + namaDisplay + "'. Silakan gunakan nomor lain atau cek saldo kamu."
           })).setMimeType(ContentService.MimeType.JSON);
         }
       }

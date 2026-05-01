@@ -206,17 +206,17 @@ export const AffiliateForm = ({ onSubmitSuccess }: { onSubmitSuccess: (data: For
             <p className="text-slate-500 mt-2">Isi data di bawah untuk mulai perjalananmu</p>
           </div>
           
-          <form onSubmit={handleSubmit} className="space-y-8">
+            <form onSubmit={handleSubmit} className="space-y-8 notranslate" translate="no" key="main-affiliate-form">
             {error && (
-              <div className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-sm font-medium flex items-center gap-3">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                {error}
+              <div key="form-error-container" className="p-4 bg-red-50 border border-red-100 text-red-600 rounded-2xl text-sm font-medium flex items-center gap-3">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse flex-shrink-0" />
+                <span className="flex-1">{error}</span>
               </div>
             )}
 
-            <div className="space-y-6">
-              <div className="grid sm:grid-cols-2 gap-6">
-                <div className="space-y-2">
+            <div className="space-y-6" key="form-content">
+              <div className="grid sm:grid-cols-2 gap-6" key="basic-info-grid">
+                <div className="space-y-2" key="field-nama">
                   <label className="text-sm font-semibold text-slate-700">Nama Lengkap</label>
                   <input 
                     name="nama"

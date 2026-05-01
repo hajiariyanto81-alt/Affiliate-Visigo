@@ -5,7 +5,7 @@ export const handler: Handler = async (event) => {
     return { statusCode: 405, body: "Method Not Allowed" };
   }
 
-  const scriptUrl = "https://script.google.com/macros/s/AKfycbyAI_coZWU1N7NW-VYG0bdbxgjBQNRohUxGThkxfc0vwjnRMzbI7YrQr1uOOP5DirycdA/exec";
+  const scriptUrl = "https://script.google.com/macros/s/AKfycbzw4iA01rReSAsdXoT2tlIqUpjpJ384jWMmEIqDOnJMxBhcai15JqcnnfX6LMlvbsF4NQ/exec";
 
   try {
     const response = await fetch(scriptUrl, {
